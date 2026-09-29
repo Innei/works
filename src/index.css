@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-jp: 'Noto Serif JP', ui-serif, serif;
+  --color-ink: #050507;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: #ecebe7;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: #ecebe7;
+  color: var(--color-ink);
+}
+
+#scroller {
+  scrollbar-width: none;
+}
+
+#scroller::-webkit-scrollbar {
+  display: none;
+}
