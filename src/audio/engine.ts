@@ -2,6 +2,7 @@ import { bass, chime, crackle, drums, impulse, mtof, pluck } from './instruments
 import { hit, schedule, stepSeconds, type Clock, type Groove, type StepEvent, type Voice } from './sequencer'
 
 export type BeatKind = 'kick' | 'hat' | 'accent'
+type HitKind = BeatKind | 'note'
 
 interface Graph {
   ctx: AudioContext
@@ -91,6 +92,7 @@ class AudioEngine {
   private generation = 0
   private beats: { time: number; kind: BeatKind }[] = []
   private quarters: number[] = []
+  private hits: { time: number; kind: HitKind }[] = []
   on = false
 
   setGroove(groove: Groove) {
@@ -162,6 +164,18 @@ class AudioEngine {
     return beat - ((now - last) % beat)
   }
 
+  envelopes() {
+    const out = { kick: 0, accent: 0, hat: 0, note: 0 }
+    if (!this.on || !this.graph) return out
+    const now = this.graph.ctx.currentTime
+    const decay = { kick: 7, accent: 9, hat: 16, note: 5 }
+    for (const h of this.hits) {
+      if (h.time > now) continue
+      out[h.kind] = Math.max(out[h.kind], Math.exp(-(now - h.time) * decay[h.kind]))
+    }
+    return out
+  }
+
   level() {
     if (!this.on || !this.graph) return 0
     const { analyser, data } = this.graph
@@ -194,6 +208,7 @@ class AudioEngine {
     const now = this.graph.ctx.currentTime
     this.quarters = this.quarters.filter((t) => t > now - 2)
     this.beats = this.beats.filter((b) => b.time > now - 0.25)
+    this.hits = this.hits.filter((h) => h.time > now - 1)
     this.timer = window.setTimeout(() => this.tick(), TICK_MS)
   }
 
@@ -214,6 +229,7 @@ class AudioEngine {
       drums[voice](g.ctx, g.drums, time, v)
       const kind: BeatKind = voice === 'kick' ? 'kick' : voice === 'hat' || voice === 'shaker' ? 'hat' : 'accent'
       this.beats.push({ time, kind })
+      this.hits.push({ time, kind })
       if (voice === 'kick' && groove.sidechain) {
         g.duck.gain.setValueAtTime(0.3, time)
         g.duck.gain.setTargetAtTime(1, time + 0.02, 0.12)
@@ -224,6 +240,7 @@ class AudioEngine {
     if (b != null) bass(g.ctx, g.synth, time, b, stepSeconds(groove.bpm) * 1.8)
     const a = groove.arp?.[step]
     if (a != null) (groove.arpVoice === 'chime' ? chime : pluck)(g.ctx, g.synth, time, a, 1)
+    if (a != null || b != null) this.hits.push({ time, kind: 'note' })
     if (groove.crackle && Math.random() < 0.35) crackle(g.ctx, g.drums, time + Math.random() * stepSeconds(groove.bpm))
   }
 

@@ -92,9 +92,17 @@ export function AudioToggle() {
     }
     let raf = 0
     const tick = () => {
-      const levels = audio.bands(BARS)
+      const bands = audio.bands(BARS)
+      const e = audio.envelopes()
+      const drive = [
+        e.kick,
+        e.accent * 0.9 + e.note * 0.5,
+        e.hat * 0.8 + e.kick * 0.4,
+        e.note * 0.9 + e.accent * 0.4,
+        e.hat * 0.6 + e.note * 0.4,
+      ]
       bars.current.forEach((el, i) => {
-        if (el) el.style.transform = `scaleY(${0.18 + Math.min(1, levels[i] * 1.6) * 0.82})`
+        if (el) el.style.transform = `scaleY(${0.16 + Math.min(1, drive[i] + bands[i] * 0.25) * 0.84})`
       })
       raf = requestAnimationFrame(tick)
     }
@@ -144,7 +152,7 @@ export function AudioToggle() {
             ref={(el) => {
               bars.current[i] = el
             }}
-            className="block h-full w-[2px] origin-center rounded-full bg-white/80 transition-transform duration-100"
+            className="block h-full w-[2px] origin-center rounded-full bg-white/80"
             style={{ transform: 'scaleY(0.18)' }}
           />
         ))}
