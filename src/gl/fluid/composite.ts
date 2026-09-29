@@ -160,8 +160,6 @@ void main() {
   col *= 1.0 - 0.6 * clamp(shadow, 0.0, 1.0);
   col = mix(col, a.rgb, a.a);
   col = mix(col, b.rgb, b.a);
-  float rim = uRevealA * smoothstep(0.004, 0.0, abs(distA)) + uRevealB * smoothstep(0.004, 0.0, abs(distB));
-  col += uP2 * rim * 0.35;
 
   gl_FragColor = vec4(max(col, 0.0), 1.0);
 }

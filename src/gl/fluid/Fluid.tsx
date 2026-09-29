@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import { SRGBColorSpace, TextureLoader, Vector2, Vector3, Vector4, type Texture } from 'three'
+import { AdditiveBlending, SRGBColorSpace, TextureLoader, Vector2, Vector3, Vector4, type Texture } from 'three'
 
 import { audio } from '../../audio/engine'
 import { sections } from '../../data/projects'
@@ -9,6 +9,7 @@ import { blendAt, mixResolved, resolve } from '../../lib/params'
 import { live } from '../../store'
 import { Shader } from '../Shader'
 import { compositeFragment, compositeVertex } from './composite'
+import { frameFragment, frameGeometry, frameVertex } from './frame'
 import { FluidSim } from './sim'
 
 const POINTER_FORCE = 6000
@@ -47,6 +48,8 @@ export function Fluid() {
   const size = useThree((s) => s.size)
   const sim = useMemo(() => (live.mobile ? new FluidSim(64, 256) : new FluidSim(128, 512)), [])
   useEffect(() => () => sim.dispose(), [sim])
+  const frame = useMemo(() => frameGeometry(live.mobile ? 1100 : 2600), [])
+  useEffect(() => () => frame.dispose(), [frame])
   const resolved = useMemo(() => sections.map((s) => resolve(s.fluid)), [])
   useEffect(() => sections.forEach((_, i) => shotFor(i)), [])
   const uniforms = useMemo(
@@ -78,6 +81,12 @@ export function Fluid() {
       uRevealA: { value: 0 },
       uRevealB: { value: 0 },
       uStir: { value: 0 },
+      uFocusA: { value: new Vector2(0.5, 0.5) },
+      uFocusB: { value: new Vector2(0.5, 0.5) },
+      uHasA: { value: 0 },
+      uHasB: { value: 0 },
+      uT: { value: 0 },
+      uPixel: { value: 1.5 },
     }),
     [],
   )
@@ -116,6 +125,13 @@ export function Fluid() {
     u.uShotA.value = shotA?.tex ?? null
     u.uRevealA.value = shotA ? r[from] : 0
     if (shotA) u.uCardA.value.set(...cardRect(shotA.aspect, aspect, fa, wide))
+    u.uFocusA.value.set(fa[0], fa[1])
+    u.uFocusB.value.set(fb[0], fb[1])
+    u.uHasA.value = shotA ? 1 : 0
+    u.uHasB.value = to === from ? u.uHasA.value : shotB ? 1 : 0
+    u.uT.value = to === from ? 0 : t
+    u.uPixel.value = gl.getPixelRatio() * 1.6
+    if (to === from && shotA) u.uCardB.value.copy(u.uCardA.value)
     u.uShotB.value = shotB?.tex ?? null
     u.uRevealB.value = shotB ? r[to] : 0
     if (shotB) u.uCardB.value.set(...cardRect(shotB.aspect, aspect, fb, wide))
@@ -176,9 +192,22 @@ export function Fluid() {
   })
 
   return (
+    <>
     <mesh frustumCulled={false}>
       <planeGeometry args={[2, 2]} />
       <Shader vertexShader={compositeVertex} fragmentShader={compositeFragment} uniforms={uniforms} depthTest={false} depthWrite={false} />
     </mesh>
+    <points geometry={frame} frustumCulled={false} renderOrder={1}>
+      <Shader
+        vertexShader={frameVertex}
+        fragmentShader={frameFragment}
+        uniforms={uniforms}
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        blending={AdditiveBlending}
+      />
+    </points>
+    </>
   )
 }
